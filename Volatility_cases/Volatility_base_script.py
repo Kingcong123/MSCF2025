@@ -27,7 +27,7 @@ If that doesn’t work, try:
 # time remaining (in years)
 
 #ESTIMATE YOUR VOLATILITY:
-vol = 0.25
+vol = 0.25 #Create function to estimate volatility
 
 #class that passes error message, ends the program
 class ApiException(Exception):

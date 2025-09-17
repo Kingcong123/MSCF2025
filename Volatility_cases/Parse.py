@@ -1,3 +1,7 @@
+from py_vollib.black_scholes.implied_volatility import implied_volatility as iv
+import math
+import numpy as np
+
 def parse_news(news):
     volatilities = []
     for item in news:
@@ -31,14 +35,14 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     strike = float(name[3:5])
 
     if optionIV is None:
-        optionIV = bs_iv(optionPrice, etfPrice, strike, expiry, 0.0, 'c') #implied vol of the option
+        optionIV = iv(optionPrice, etfPrice, strike, expiry, 0.0, 'c') #implied vol of the option
     
     #for the scholes 
     d1 = (math.log(etfPrice/strike) + 0.5*(optionIV**2)*expiry) / (optionIV*math.sqrt(expiry))
-    vega = etfPrice * phi(d1) * math.sqrt(expiry) #this is price change sensitivity to volatility
+    vega = etfPrice * normPDF(d1) * math.sqrt(expiry) #this is price change sensitivity to volatility
 
     volDiff = optionIV - etfIV #difference in volatility... consider switching out with diffcom entirely?
-    profitMargin = (-dSigma) * vega #if dSigma is negative, we make money, positive we lose money
+    profitMargin = (-volDiff) * vega #if volDiff is negative, we make money, positive we lose money
     rateOfReturn = profitMargin / optionPrice 
     
     winProb = normCDF(abs(volDiff)/0.02) #probability of winning if we take the correct side

@@ -14,3 +14,37 @@ def parse_news(news):
                 except ValueError:
                     continue
     return volatilities
+
+#parse.parse_news(news)
+
+def normPDF(number):
+    return np.exp(0.5*(number**2.0))/np.sqrt(2.0*np.pi)
+
+def normCDF(number):
+    return (1.0+ math.erf(number/np.sqrt(2.0)))/2.0
+
+def kelly(etfPrice, etfIV, optionPrice, name, 
+          delta, diffcom, sharesLeft, optionIV = None):
+    #we don't actually get the IV of the option. Imma black scholes it here
+    expiry = (20/240) 
+    safetyMargin = 0.9
+    strike = float(name[3:5])
+
+    if optionIV is None:
+        optionIV = bs_iv(optionPrice, etfPrice, strike, expiry, 0.0, 'c') #implied vol of the option
+    
+    #for the scholes 
+    d1 = (math.log(etfPrice/strike) + 0.5*(optionIV**2)*expiry) / (optionIV*math.sqrt(expiry))
+    vega = etfPrice * phi(d1) * math.sqrt(expiry) #this is price change sensitivity to volatility
+
+    volDiff = optionIV - etfIV #difference in volatility... consider switching out with diffcom entirely?
+    profitMargin = (-dSigma) * vega #if dSigma is negative, we make money, positive we lose money
+    rateOfReturn = profitMargin / optionPrice 
+    
+    winProb = normCDF(abs(volDiff)/0.02) #probability of winning if we take the correct side
+    
+    kelly = ((winProb * rateOfReturn) - (1-winProb)) / (rateOfReturn)
+    
+    safeKelly = kelly * safetyMargin
+    
+    return safeKelly * sharesLeft

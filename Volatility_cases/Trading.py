@@ -4,6 +4,7 @@ import requests
 from time import sleep
 import pandas as pd
 import numpy as np
+import Parse
 
 def place_order(session, ticker, type, quantity, action):
     params = {
@@ -118,8 +119,12 @@ def trade(session, assets2, helper):
     #print(decision)
     # Step 2: Trading logic for BUY
     if decision == "BUY":
-
-        num_contracts = (profitability[max_id] * 100) // abs(delta_val)
+        
+        num_contracts = Parse.kelly(assets2['last'].iloc[0], assets2['i_vol'].iloc[0], assets2['last'].iloc[max_id+1], 
+                              assets2['ticker'].iloc[max_id+1], 
+                              detlas[max_id], profitability[max_id], 
+                              opt_gross)
+        #num_contracts = (profitability[max_id] * 100) // abs(delta_val)
 
         #Enforce option gross limit
         if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:

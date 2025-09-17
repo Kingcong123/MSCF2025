@@ -14,6 +14,7 @@ from py_vollib.black_scholes import black_scholes as bs
 from py_vollib.black_scholes.greeks.analytical import delta
 import py_vollib.black.implied_volatility as iv
 import Trading as tr
+import Parse
 """
 To install py_vollib, use conda install jholdom::py_vollib, since it requires Python versions between 3.6 and 3.8.
 If that doesn’t work, try:
@@ -26,9 +27,6 @@ If that doesn’t work, try:
 # Stock price s
 # strike price k
 # time remaining (in years)
-
-#ESTIMATE YOUR VOLATILITY:
-vol = 0.25 #Create function to estimate volatility
 
 #class that passes error message, ends the program
 class ApiException(Exception):
@@ -64,11 +62,38 @@ def get_s(session):
 def years_r(mat, tick):
     yr = (mat - tick)/3600 
     return yr
+
+last_newsid = 0
+
+def get_news(session):
+    global last_newsid
+    params = {
+        'since': last_newsid 
+    }
+    news = session.get('http://localhost:9999/v1/news', params=params)
+    news = news.json()
+    if news and len(news) > 0:  # Check if news list is not empty
+        latest_id = max([item['news_id'] for item in news])
+        last_newsid = latest_id
+        return news
+    else:
+        return []
+    
     
 def main():
+    vol = 0.24  #Initial volatility estimate
     with requests.Session() as session:
         session.headers.update(API_KEY)
         while get_tick(session) < 300 and not shutdown:
+            news = get_news(session)
+
+            #ESTIMATE YOUR VOLATILITY:
+            if news:
+                volatilities = Parse.parse_news(news)
+                print(volatilities)
+                print(get_tick(session), volatilities)
+                vol = sum(volatilities )/len(volatilities) if len(volatilities) > 0 else vol
+
             assets = pd.DataFrame(get_s(session))
             assets2 = assets.drop(columns=['vwap', 'nlv', 'bid_size', 'ask_size', 'volume', 'realized', 'unrealized', 'currency', 
                                            'total_volume', 'limits', 'is_tradeable', 'is_shortable', 'interest_rate', 'start_period', 'stop_period', 'unit_multiplier', 
@@ -130,7 +155,7 @@ def main():
                 elif assets2['last'].iloc[row] - assets2['bsprice'].iloc[row] < 0:
                     assets2['diffcom'].iloc[row] = assets2['last'].iloc[row] - assets2['bsprice'].iloc[row] + 0.02
                     assets2['abs_val'].iloc[row] = abs(assets2['diffcom'].iloc[row])
-                if assets2['diffcom'].iloc[row] > 0.02:
+                if assets2['diffcom'].iloc[row] > 0.02: 
                     assets2['decision'].iloc[row] = 'SELL'
                 elif assets2['diffcom'].iloc[row] < -0.02:
                     assets2['decision'].iloc[row] = 'BUY'
@@ -144,7 +169,7 @@ def main():
             
             helper['share_exposure'] = np.nansum(a1 * a2 * a3)
             helper['required_hedge'] = helper['share_exposure'].iloc[0] * -1
-            helper['must_be_traded'] = helper['required_hedge']/,- assets2['position'].iloc[0]
+            helper['must_be_traded'] = helper['required_hedge']/- assets2['position'].iloc[0]
             if assets2['position'].iloc[0] > 0:
                 helper['current_pos'] = 'LONG'
             elif assets2['position'].iloc[0] < 0:
@@ -158,8 +183,13 @@ def main():
             else:
                 helper['required_pos'] = 'NO POSITION'
             helper['SAME?'] = (helper['required_pos'] == helper['current_pos'])
+
+            tr.trade(session, assets2, helper)
+
             print(assets2.to_markdown(), end='\n'*2)
             print(helper.to_markdown(), end='\n'*2)
+
+            
             
             # import matplotlib.pyplot as plt
             # y = assets2['last']
@@ -168,7 +198,7 @@ def main():
             sleep(0.5)
 
             #Now, trade using Trading module
-            tr.trade(assets2, helper)
+            
 
 if __name__ == '__main__':
     main()

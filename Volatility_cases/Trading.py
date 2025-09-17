@@ -96,11 +96,13 @@ def trade(session, assets2, helper, vol):
 
     #Step 1: Sell all options that are in SELL position first, sell the corresponding hedged shares too
     for i in range(len(decisions)):
-        if decisions[i] == "SELL" and positions[i+1] > 0:
+        print("DECISION:", decisions[i], "POSITION:", positions[i+1], assets2['ticker'].iloc[i+1])
+        if decisions[i] == "SELL" and abs(positions[i+1]) > 0:
             opt_pos = option_positions[i]
             opt_size = sizes[i]
             opt_delta = detlas[i]
             proposed_sell = abs(opt_pos)
+            print("Preparing to SELL", proposed_sell, "contracts of", assets2['ticker'].iloc[i+1], "opt_pos:", opt_pos, "opt_size:", opt_size, "opt_delta:", opt_delta)
 
             # Check option net after selling
             projected_net = opt_net - opt_pos
@@ -130,7 +132,6 @@ def trade(session, assets2, helper, vol):
                 hedge_shares = int(-1 * proposed_sell * opt_size * opt_delta)
 
             # Execute if still positive
-            print(proposed_sell)
             if proposed_sell > 0:
                 print(f"Placing SELL order for {proposed_sell} contracts of {assets2['ticker'].iloc[i+1]} with hedge {hedge_shares} shares")
                 place_order(session, assets2['ticker'].iloc[i+1], "MARKET", int(proposed_sell), "SELL")

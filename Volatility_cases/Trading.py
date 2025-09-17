@@ -73,7 +73,7 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
     DELTA_LIMIT = 7000
     STOCK_LIMIT = 50000
     OPT_GROSS_LIMIT = 2500
-    OPT_NET_LIMIT = 1000
+    OPT_NET_LIMIT = 700
 
     #Position details
     profitability = np.abs(np.array(assets2['diffcom'].iloc[1:]))
@@ -96,7 +96,6 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
 
     #Step 1: Sell all options that are in SELL position first, sell the corresponding hedged shares too
     for i in range(len(decisions)):
-        print("DECISION:", decisions[i], "POSITION:", positions[i+1], assets2['ticker'].iloc[i+1])
         if decisions[i] == "SELL" and abs(positions[i+1]) > 0:
             opt_pos = option_positions[i]
             opt_size = sizes[i]
@@ -198,7 +197,6 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
         #Final trade size, and how much stock we need to hedge
         trade_size = num_contracts * 100 * delta_val
         need_hedge = -1 * trade_size
-        print("num_contracts", num_contracts, "FINAL TRADE SIZE:", trade_size, "NEED HEDGE:", need_hedge)
         
         # If after all adjustments, trade_size is zero, skip
         if trade_size == 0:

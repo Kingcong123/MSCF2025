@@ -34,6 +34,7 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     safetyMargin = 0.9
     strike = float(name[3:5])
     type = 'c' if 'C' in name else 'p'
+    sgn = 1
 
     if optionIV is None:
         optionIV = iv(optionPrice, etfPrice, strike, expiry, 0.0, type) #implied vol of the option
@@ -43,8 +44,11 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     vega = etfPrice * normPDF(d1) * math.sqrt(expiry) #this is price change sensitivity to volatility
 
     volDiff = optionIV - etfIV #difference in volatility... consider switching out with diffcom entirely?
-    profitMargin = (-volDiff) * vega #if volDiff is negative, we make money, positive we lose money
-    rateOfReturn = profitMargin / optionPrice 
+    profitMargin = (-volDiff) * vega #if volDiff is negative, we long, positive we short
+    rateOfReturn = abs(profitMargin) / optionPrice 
+    
+    if profitMargin < 0:
+        sgn = -1
     
     winProb = normCDF(abs(volDiff)/0.02) #probability of winning if we take the correct side
     
@@ -52,4 +56,4 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     
     safeKelly = kelly * safetyMargin
     
-    return safeKelly * sharesLeft
+    return safeKelly * sharesLeft * sgn

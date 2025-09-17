@@ -185,7 +185,7 @@ def main():
                 helper['required_pos'] = 'NO POSITION'
             helper['SAME?'] = (helper['required_pos'] == helper['current_pos'])
 
-            tr.trade(session, assets2, helper)
+            tr.trade(session, assets2, helper, vol)
 
             print(assets2.to_markdown(), end='\n'*2)
             print(helper.to_markdown(), end='\n'*2)

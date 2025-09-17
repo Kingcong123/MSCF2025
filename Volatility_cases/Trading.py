@@ -22,7 +22,7 @@ def place_order(session, ticker, type, quantity, action):
     print(response)
     return response
 
-def trade(session, assets2, helper):
+def trade(session, assets2, helper, vol):
     """
     Trading logic for volatility case.
     Parameters
@@ -119,7 +119,7 @@ def trade(session, assets2, helper):
     # Step 2: Trading logic for BUY
     if decision == "BUY":
         
-        num_contracts = Parse.kelly(assets2['last'].iloc[0], assets2['i_vol'].iloc[0], assets2['last'].iloc[max_id+1], 
+        num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
                               assets2['ticker'].iloc[max_id+1], 
                               detlas[max_id], profitability[max_id], 
                               opt_gross)

@@ -8,18 +8,43 @@ import numpy as np
 import Parse
 
 def place_order(session, ticker, type, quantity, action):
+    if type == "STOCK" and quantity > 10000:
+        while(quantity > 10000):
+            amount = 9000
+            params = {
+                'ticker': ticker,
+                'type': type,
+                'quantity': amount,
+                'action': action
+            }
+            # Make the POST request with proper URL and 
+            response = session.post('http://localhost:9999/v1/orders', params=params)
+            quantity = quantity - amount
+
+    if type != "STOCK" and quantity > 100:
+        while(quantity > 100):
+            amount = 90
+            params = {
+                'ticker': ticker,
+                'type': type, 
+                'quantity': amount,
+                'action': action
+         }
+            # Make the POST request with proper URL and 
+            response = session.post('http://localhost:9999/v1/orders', params=params)
+            quantity = quantity - amount
+
     params = {
         'ticker': ticker,
         'type': type, 
         'quantity': quantity,
         'action': action
-    }
-    # Make the POST request with proper URL and parameters
+        }
     response = session.post('http://localhost:9999/v1/orders', params=params)
-    print(f"Sent params: {params}")
-    print('Trade complete')
     print(response)
     return response
+
+    
 
 def trade(session, assets2, helper, vol):
     """
@@ -32,7 +57,19 @@ def trade(session, assets2, helper, vol):
     helper : pd.DataFrame
         Contains hedging and exposure calculations (share_exposure, required_hedge, etc.)
     """
-    # --- Risk Limits ---
+   #Trade the shares to match the required hedge first
+    current_exposure = helper['must_be_traded'].iloc[0]
+    if np.isnan(current_exposure):
+        current_exposure = 0
+    print("CURRENT EXPOSURE:", current_exposure)
+    if current_exposure > 0:
+        print("BUYING EXPOSURE SHARES:")
+        place_order(session, assets2['ticker'].iloc[0], "MARKET", int(current_exposure), "BUY")
+    if current_exposure < 0:
+        print("SELLING EXPOSURE SHARES:")
+        place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(int(current_exposure)), "SELL")
+
+     # --- Risk Limits ---
     DELTA_LIMIT = 7000
     STOCK_LIMIT = 50000
     OPT_GROSS_LIMIT = 2500
@@ -44,9 +81,6 @@ def trade(session, assets2, helper, vol):
     decisions = np.array(assets2['decision'].iloc[1:])
     positions = np.array(assets2['position'])
     sizes = np.array(assets2['size'])
-    current_exposure = helper['must_be_traded'].iloc[0]
-    if np.isnan(current_exposure):
-        current_exposure = 0
         
 
     option_positions = positions[1:]
@@ -54,7 +88,7 @@ def trade(session, assets2, helper, vol):
         if 'P' in assets2['ticker'].iloc[i+1]:
             option_positions[i] *= -1  # Invert position for puts'
 
-    #Limit details
+    #Limit calculations
     stock_position = positions[0] * sizes[0]
     opt_gross = np.nansum(np.abs(option_positions))
     opt_net = np.nansum(option_positions) 
@@ -103,77 +137,67 @@ def trade(session, assets2, helper, vol):
 
             if abs(hedge_shares) > 0:
                 if hedge_shares < 0:
-                    place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "SELL")
-                else:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "BUY")
+                else:
+                    place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "SELL")
    
     
     #Get current trade details
     max_id = np.argmax(profitability) #Index of most profitable option
     delta_val = detlas[max_id]        #Delta of this option
-    print("THIS IS DELTA_VAL:", delta_val)
     decision = decisions[max_id]      #Decision of this option
 
     # Step 2: Trading logic for BUY
     if decision == "BUY":
 
-        #num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
-                              #assets2['ticker'].iloc[max_id+1], 
-                              #detlas[max_id], profitability[max_id], 
-                              #OPT_NET_LIMIT - opt_gross)
-        #print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
-        num_contracts = (profitability[max_id] * 20) // delta_val
-        print("This is profitability:", profitability[max_id], "This is delta_val:", delta_val)
-        print("NUM_CONTRACTS BEFORE CHANGES:", num_contracts)
-        
-
+        num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
+                              assets2['ticker'].iloc[max_id+1], 
+                              detlas[max_id], profitability[max_id], 
+                              OPT_NET_LIMIT - opt_gross)
+        print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
+        #num_contracts = (profitability[max_id] * 20) // delta_val
+    
         #Enforce option gross limit
-        print(opt_gross, OPT_GROSS_LIMIT)
         if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:
             num_contracts = (OPT_GROSS_LIMIT - opt_gross) * np.sign(num_contracts)
-            print("NUM_CONTRACTS AFTER GROSS LIMIT:", num_contracts)
+            #print("NUM_CONTRACTS AFTER GROSS LIMIT:", num_contracts)
 
         # Enforce option net limits
         
             if np.sign(num_contracts) == -1:
                 if abs(num_contracts + opt_net) > OPT_NET_LIMIT:
                     num_contracts = OPT_NET_LIMIT + opt_net
-                    print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
+                    #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
             else:
                 num_contracts = OPT_NET_LIMIT - opt_net
-                print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
+                #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
 
         #Recompute trade_size after option adjustments
         trade_size = num_contracts * 100 * abs(delta_val)
 
-        #Enforce Delta Exposure Limit
-        recalculated_exposure = trade_size + current_exposure
-        if abs(recalculated_exposure) > DELTA_LIMIT:
+        if abs(trade_size) > DELTA_LIMIT:
             # shrink contracts to stay inside delta bounds
-            allowed_delta = DELTA_LIMIT - abs(current_exposure)
+            allowed_delta = DELTA_LIMIT - abs(trade_size)
             num_contracts = int(allowed_delta / (100 * delta_val))
-            print("NUM_CONTRACTS AFTER DELTA LIMIT:", num_contracts)
+            #print("NUM_CONTRACTS AFTER DELTA LIMIT:", num_contracts)
 
         #Recompute trade_size after delta adjustments
-        trade_size = num_contracts * 100 * abs(delta_val)
+        trade_size = num_contracts * 100 * delta_val
         need_hedge = -1 * trade_size
-        recalculated_exposure = need_hedge + current_exposure
 
         #Enforce Stock Limit (hedge capacity)
-        if np.sign(recalculated_exposure) == -1:
-            allowed_stock = STOCK_LIMIT + recalculated_exposure
+        if np.sign(need_hedge) == -1:
+            allowed_stock = STOCK_LIMIT + need_hedge
         else:
-            allowed_stock = STOCK_LIMIT - recalculated_exposure
-        if abs(recalculated_exposure) > abs(allowed_stock):
+            allowed_stock = STOCK_LIMIT - need_hedge
+        if abs(need_hedge) > abs(allowed_stock):
             num_contracts = int(np.sign(num_contracts) * abs(allowed_stock) / (100 * abs(delta_val)))
-            print("NUM_CONTRACTS AFTER STOCK LIMIT:", num_contracts)
+            #print("NUM_CONTRACTS AFTER STOCK LIMIT:", num_contracts)
         
         #Final trade size, and how much stock we need to hedge
         trade_size = num_contracts * 100 * delta_val
         need_hedge = -1 * trade_size
-        recalculated_exposure = need_hedge + current_exposure
-
-        print(f"TRADE SIZE: {trade_size}, NEED HEDGE: {need_hedge}, RECALCULATED EXPOSURE: {recalculated_exposure}, NUM CONTRACTS: {num_contracts}")
+        print("num_contracts", num_contracts, "FINAL TRADE SIZE:", trade_size, "NEED HEDGE:", need_hedge)
         
         # If after all adjustments, trade_size is zero, skip
         if trade_size == 0:
@@ -183,11 +207,15 @@ def trade(session, assets2, helper, vol):
             # with the current exposure added (from helper['share_exposure'])
             if abs(num_contracts) > 0:
                 place_order(session, assets2['ticker'].iloc[max_id+1], "MARKET", int(abs(num_contracts)), "BUY")
-            if recalculated_exposure != 0:
-                if recalculated_exposure  > 0:
-                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(recalculated_exposure), "BUY")
+            if need_hedge != 0:
+                print("NEED HEDGE:", need_hedge)
+                if need_hedge  > 0:
+                    print("BUYING HEDGE SHARES:")
+                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(need_hedge), "BUY")
                 else:
-                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(abs(recalculated_exposure)), "SELL")
+                    print("SELLING HEDGE SHARES:")
+                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(abs(need_hedge)), "SELL")
+        
 
     
 

@@ -30,8 +30,8 @@ def normCDF(number, stdev):
 def kelly(etfPrice, etfIV, optionPrice, name, 
           delta, diffcom, sharesLeft, optionIV = None):
     #debugging
-    print("THIS IS KELLY PARAMETER", etfPrice, etfIV, optionPrice, name, 
-          delta, diffcom, sharesLeft, optionIV)
+    """print("THIS IS KELLY PARAMETER", etfPrice, etfIV, optionPrice, name, 
+          delta, diffcom, sharesLeft, optionIV)"""
     
     #we don't actually get the IV of the option. Imma black scholes it here
     expiry = (20/240) 
@@ -54,15 +54,15 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     if volDiff > 0: #vol is too high => priced too high, short it
         sgn = -1
     
-    winProb = normCDF(abs(volDiff), 0.03) #probability of winning if we take the correct side
+    winProb = normCDF(abs(volDiff), 1) #probability of winning if we take the correct side
     #Mean for this CDF is 0, stdev is 0.03 (3%) as a guess
     
     kelly = ((winProb * rateOfReturn) - (1-winProb)) / (rateOfReturn)
     
     safeKelly = kelly * safetyMargin
     
-    print("input variables:", type, optionIV, etfIV, volDiff)
+    """print("input variables:", type, optionIV, etfIV, volDiff)
     print("calculations:", sgn, profitMargin, rateOfReturn, winProb)
-    print("output items:", kelly, safeKelly, sharesLeft, sgn)
+    print("output items:", kelly, safeKelly, sharesLeft, sgn)'"""
     
     return safeKelly * sharesLeft * sgn

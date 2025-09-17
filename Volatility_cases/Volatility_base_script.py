@@ -81,18 +81,17 @@ def get_news(session):
     
     
 def main():
-    vol = 0.24  #Initial volatility estimate
+    vol = 0.22  #Initial volatility estimate
 
     with requests.Session() as session:
         session.headers.update(API_KEY)
         while get_tick(session) < 300 and not shutdown:
+            print(vol)
             news = get_news(session)
-
+            
             #ESTIMATE YOUR VOLATILITY:
             if news:
                 volatilities = Parse.parse_news(news)
-                print(volatilities)
-                print(get_tick(session), volatilities)
                 vol = sum(volatilities)/len(volatilities) if len(volatilities) > 0 else vol
 
             assets = pd.DataFrame(get_s(session))
@@ -171,7 +170,7 @@ def main():
             
             helper['share_exposure'] = np.nansum(a1 * a2 * a3)
             helper['required_hedge'] = helper['share_exposure'].iloc[0] * -1
-            helper['must_be_traded'] = helper['required_hedge']/- assets2['position'].iloc[0]
+            helper['must_be_traded'] = helper['required_hedge'] - assets2['position'].iloc[0]
             if assets2['position'].iloc[0] > 0:
                 helper['current_pos'] = 'LONG'
             elif assets2['position'].iloc[0] < 0:

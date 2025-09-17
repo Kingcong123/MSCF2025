@@ -15,7 +15,6 @@ import numpy as np
     #Or if our net limit for options is too high, reduce position
 
 #Move to selling, if the position of any option is SELL, sell this along with corresponding shares (same current delta change)
-
 def trade(assets2, helper):
     """
     Trading logic for options and hedging using RIT Market Simulator.
@@ -50,17 +49,58 @@ def trade(assets2, helper):
 
     #Step 1: Sell all options that are in SELL position first, sell the corresponding hedged shares too
     for i in range(1, len(positions), 1):
-        if decisions[i] != "SELL":
-            continue
-        else:
-            place_order(assets2['ticker'].iloc[i], 'SELL', abs(positions[i]))
+        if decisions[i] == "SELL":
 
-            #Calculate the number of shares to buy/sell to remain delta neutral
-            hedge_shares = abs(positions[i] * sizes[i] * detlas[i])
             if 'P' in assets2['ticker'].iloc[i]:
-                place_order('RIT', 'SELL', abs(hedge_shares))
+                op_type = 'PUT'
             else:
-                place_order('RIT', 'BUY', abs(hedge_shares))
+                op_type = 'CALL'
+            opt_pos = positions[i]
+            opt_size = sizes[i]
+            opt_delta = detlas[i]
+
+            # Proposed option sale size
+            proposed_sell = abs(opt_pos)
+
+            # Check option gross + net after selling
+            projected_net = opt_net - (proposed_sell * opt_size)
+
+            # Resize if over limits
+            if abs(projected_net) > OPT_NET_LIMIT:
+                allowed_net_change = OPT_NET_LIMIT - abs(opt_net)
+                allowed_sell = allowed_net_change // opt_size
+                proposed_sell = min(proposed_sell, abs(allowed_sell))
+
+            # Hedge amount (shares)
+            hedge_shares = int(abs(proposed_sell * opt_size * opt_delta))
+
+        # Check stock limit before hedging
+        projected_stock = stock_position
+        if 'P' in opt_ticker:
+            projected_stock -= hedge_shares
+        else:
+            projected_stock += hedge_shares
+
+        if abs(projected_stock) > STOCK_LIMIT:
+            # shrink hedge to fit inside stock limit
+            allowed_stock_change = STOCK_LIMIT - abs(stock_position)
+            if allowed_stock_change < 0:
+                proposed_sell = 0
+                hedge_shares = 0
+            else:
+                max_contracts_for_stock = allowed_stock_change // (opt_size * abs(opt_delta))
+                proposed_sell = min(proposed_sell, max_contracts_for_stock)
+                hedge_shares = int(abs(proposed_sell * opt_size * opt_delta))
+
+        # Execute if still positive
+        if proposed_sell > 0:
+            place_order(opt_ticker, 'SELL', proposed_sell)
+
+            if hedge_shares > 0:
+                if 'P' in opt_ticker:
+                    place_order('RIT', 'SELL', hedge_shares)
+                else:
+                    place_order('RIT', 'BUY', hedge_shares)
    
     
     #Get current trade details

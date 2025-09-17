@@ -144,7 +144,7 @@ def main():
             
             helper['share_exposure'] = np.nansum(a1 * a2 * a3)
             helper['required_hedge'] = helper['share_exposure'].iloc[0] * -1
-            helper['must_be_traded'] = helper['required_hedge']/assets2['position'].iloc[0] - assets2['position'].iloc[0]
+            helper['must_be_traded'] = helper['required_hedge']/,- assets2['position'].iloc[0]
             if assets2['position'].iloc[0] > 0:
                 helper['current_pos'] = 'LONG'
             elif assets2['position'].iloc[0] < 0:

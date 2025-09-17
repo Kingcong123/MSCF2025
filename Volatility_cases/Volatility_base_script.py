@@ -38,7 +38,7 @@ def signal_handler(signum, frame):
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     shutdown = True
     
-API_KEY = {'X-API-Key': 'Rotman'}
+API_KEY = {'X-API-Key': 'WILL'}
 shutdown = False
 session = requests.Session()
 session.headers.update(API_KEY)
@@ -82,6 +82,7 @@ def get_news(session):
     
 def main():
     vol = 0.24  #Initial volatility estimate
+
     with requests.Session() as session:
         session.headers.update(API_KEY)
         while get_tick(session) < 300 and not shutdown:
@@ -92,7 +93,7 @@ def main():
                 volatilities = Parse.parse_news(news)
                 print(volatilities)
                 print(get_tick(session), volatilities)
-                vol = sum(volatilities )/len(volatilities) if len(volatilities) > 0 else vol
+                vol = sum(volatilities)/len(volatilities) if len(volatilities) > 0 else vol
 
             assets = pd.DataFrame(get_s(session))
             assets2 = assets.drop(columns=['vwap', 'nlv', 'bid_size', 'ask_size', 'volume', 'realized', 'unrealized', 'currency', 

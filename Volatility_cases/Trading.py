@@ -112,10 +112,6 @@ def trade(session, assets2, helper):
     print("THIS IS DELTA_VAL:", delta_val)
     decision = decisions[max_id]      #Decision of this option
 
-    #Debugging
-    #print(profitability)
-    #print(max_id)
-    #print(decision)
     # Step 2: Trading logic for BUY
     if decision == "BUY":
 

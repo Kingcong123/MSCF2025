@@ -14,7 +14,10 @@ def place_order(session, ticker, type, quantity, action):
     }
     # Make the POST request with proper URL and parameters
     response = session.post('http://localhost:9999/v1/orders', params=params)
-    print("TRADE SENT!!!!!!")
+    if response.status_code == 500:
+        print("SERVER ERROR - Check your parameters!")
+        print(f"Sent params: {params}")
+    print(response)
     return response
 
 def trade(session, assets2, helper):
@@ -59,7 +62,7 @@ def trade(session, assets2, helper):
 
     #Step 1: Sell all options that are in SELL position first, sell the corresponding hedged shares too
     for i in range(len(decisions)):
-        if decisions[i] == "SELL" and positions[i] > 0:
+        if decisions[i] == "SELL" and positions[i+1] > 0:
             opt_pos = positions[i]
             opt_size = sizes[i]
             opt_delta = detlas[i]
@@ -94,18 +97,19 @@ def trade(session, assets2, helper):
 
             # Execute if still positive
             if proposed_sell > 0:
-                place_order(session, assets2['ticker'].iloc[i+1], "OPTION","SELL", proposed_sell)
+                place_order(session, assets2['ticker'].iloc[i+1], "MARKET", int(proposed_sell), "SELL")
 
             if hedge_shares > 0:
                 if 'P' in assets2['ticker'].iloc[i]:
-                    place_order(session, assets2['ticker'].iloc[0], "STOCK", "SELL", abs(hedge_shares))
+                    place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "SELL")
                 else:
-                    place_order(session, assets2['ticker'].iloc[0], "STOCK", "BUY", abs(hedge_shares))
+                    place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "BUY")
    
     
     #Get current trade details
     max_id = np.argmin(profitability) #Index of most profitable option
     delta_val = detlas[max_id]        #Delta of this option
+    print("THIS IS DELTA_VAL:", delta_val)
     decision = decisions[max_id]      #Decision of this option
 
     #Debugging
@@ -115,7 +119,7 @@ def trade(session, assets2, helper):
     # Step 2: Trading logic for BUY
     if decision == "BUY":
 
-        num_contracts = profitability[max_id] * 10 // abs(delta_val)
+        num_contracts = (profitability[max_id] * 100) // abs(delta_val)
 
         #Enforce option gross limit
         if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:
@@ -170,13 +174,13 @@ def trade(session, assets2, helper):
             
             #debugging
             print("THIS IS NUM CONTRACTS", num_contracts)
-
-            place_order(session, assets2['ticker'].iloc[max_id], "OPTION", "BUY", abs(num_contracts))
+            if num_contracts > 0:
+                place_order(session, assets2['ticker'].iloc[max_id+1], "MARKET", int(abs(num_contracts)), "BUY")
             if recalculated_exposure  != 0:
                 if recalculated_exposure  > 0:
-                    place_order(session, assets2['ticker'].iloc[0], "STOCK", "BUY", recalculated_exposure)
+                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(recalculated_exposure), "BUY")
                 else:
-                    place_order(session, assets2['ticker'].iloc[0], "STOCK", "SELL", recalculated_exposure)
+                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(abs(recalculated_exposure)), "SELL")
 
     
 

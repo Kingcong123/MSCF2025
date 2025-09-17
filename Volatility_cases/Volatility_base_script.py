@@ -52,12 +52,12 @@ def get_tick(session):
     raise ApiException('fail - cannot get tick')
 
 #code that gets the securities via json  
-def get_s(session):
-    price_act = session.get('http://localhost:9999/v1/securities')
-    if price_act.ok:
-        prices = price_act.json()
-        return prices
-    raise ApiException('fail - cannot get securities')
+    def get_s(session):
+        price_act = session.get('http://localhost:9999/v1/securities')
+        if price_act.ok:
+            prices = price_act.json()
+            return prices
+        raise ApiException('fail - cannot get securities')
 
 def years_r(mat, tick):
     yr = (mat - tick)/3600 

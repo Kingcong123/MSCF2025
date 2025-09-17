@@ -46,7 +46,7 @@ def place_order(session, ticker, type, quantity, action):
 
     
 
-def trade(session, assets2, helper, vol):
+def trade(session, assets2, helper, vol, news_volatilities=None):
     """
     Trading logic for volatility case.
     Parameters
@@ -153,7 +153,7 @@ def trade(session, assets2, helper, vol):
         num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
                               assets2['ticker'].iloc[max_id+1], 
                               detlas[max_id], profitability[max_id], 
-                              OPT_NET_LIMIT - opt_gross)
+                              OPT_NET_LIMIT - opt_gross, news_volatilities=news_volatilities)
         print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
         #num_contracts = (profitability[max_id] * 20) // delta_val
     

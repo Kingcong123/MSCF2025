@@ -90,8 +90,10 @@ def main():
             news = get_news(session)
             
             #ESTIMATE YOUR VOLATILITY:
+            news_volatilities = None
             if news:
                 volatilities = Parse.parse_news(news)
+                news_volatilities = volatilities
                 vol = sum(volatilities)/len(volatilities) if len(volatilities) > 0 else vol
 
             assets = pd.DataFrame(get_s(session))
@@ -185,7 +187,7 @@ def main():
                 helper['required_pos'] = 'NO POSITION'
             helper['SAME?'] = (helper['required_pos'] == helper['current_pos'])
 
-            tr.trade(session, assets2, helper, vol)
+            tr.trade(session, assets2, helper, vol, news_volatilities)
 
             print(assets2.to_markdown(), end='\n'*2)
             print(helper.to_markdown(), end='\n'*2)

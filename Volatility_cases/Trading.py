@@ -124,6 +124,7 @@ def trade(session, assets2, helper):
                               detlas[max_id], profitability[max_id], 
                               opt_gross)
         #num_contracts = (profitability[max_id] * 100) // abs(delta_val)
+        print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
 
         #Enforce option gross limit
         if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:
@@ -175,9 +176,6 @@ def trade(session, assets2, helper):
         else:
             #Placing BUY order for {num_contracts} contracts of {assets2['ticker'].iloc[max_id]} with hedge {need_hedge} shares, 
             # with the current exposure added (from helper['share_exposure'])
-            
-            #debugging
-           
             if num_contracts > 0:
                 print("THIS IS NUM CONTRACTS", num_contracts)
                 place_order(session, assets2['ticker'].iloc[max_id+1], "MARKET", int(abs(num_contracts)), "BUY")

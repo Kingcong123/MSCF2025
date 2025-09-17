@@ -98,9 +98,11 @@ def trade(session, assets2, helper):
 
             # Execute if still positive
             if proposed_sell > 0:
+                print(f"Placing SELL order for {proposed_sell} contracts of {assets2['ticker'].iloc[i+1]} with hedge {hedge_shares} shares")
                 place_order(session, assets2['ticker'].iloc[i+1], "MARKET", int(proposed_sell), "SELL")
 
             if hedge_shares > 0:
+                print("THIS IS HEDGE SHARES:", hedge_shares)
                 if 'P' in assets2['ticker'].iloc[i]:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "SELL")
                 else:
@@ -174,10 +176,12 @@ def trade(session, assets2, helper):
             # with the current exposure added (from helper['share_exposure'])
             
             #debugging
-            print("THIS IS NUM CONTRACTS", num_contracts)
+           
             if num_contracts > 0:
+                print("THIS IS NUM CONTRACTS", num_contracts)
                 place_order(session, assets2['ticker'].iloc[max_id+1], "MARKET", int(abs(num_contracts)), "BUY")
             if recalculated_exposure  != 0:
+                print("THIS IS RECALCULATED EXPOSURE:", recalculated_exposure)
                 if recalculated_exposure  > 0:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", int(recalculated_exposure), "BUY")
                 else:

@@ -33,9 +33,10 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     expiry = (20/240) 
     safetyMargin = 0.9
     strike = float(name[3:5])
+    type = 'c' if 'C' in name else 'p'
 
     if optionIV is None:
-        optionIV = iv(optionPrice, etfPrice, strike, expiry, 0.0, 'c') #implied vol of the option
+        optionIV = iv(optionPrice, etfPrice, strike, expiry, 0.0, type) #implied vol of the option
     
     #for the scholes 
     d1 = (math.log(etfPrice/strike) + 0.5*(optionIV**2)*expiry) / (optionIV*math.sqrt(expiry))

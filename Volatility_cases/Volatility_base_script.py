@@ -107,6 +107,7 @@ def main():
             assets2['bsprice'] = np.nan
             assets2['diffcom'] = np.nan
             assets2['abs_val'] = np.nan
+            
             assets2['decision'] = np.nan
             assets2
             
@@ -189,8 +190,6 @@ def main():
 
             print(assets2.to_markdown(), end='\n'*2)
             print(helper.to_markdown(), end='\n'*2)
-
-            
             
             # import matplotlib.pyplot as plt
             # y = assets2['last']

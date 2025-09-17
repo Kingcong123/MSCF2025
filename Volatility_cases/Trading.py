@@ -19,6 +19,7 @@ def place_order(session, ticker, type, quantity, action):
     if response.status_code == 500:
         print("SERVER ERROR - Check your parameters!")
         print(f"Sent params: {params}")
+    print('Trade complete')
     print(response)
     return response
 
@@ -81,7 +82,7 @@ def trade(session, assets2, helper, vol):
                     proposed_sell = OPT_NET_LIMIT + opt_net #If put, we add the position, since put is negative
 
             # Hedge amount (shares)
-            hedge_shares = int(-1 * proposed_sell * opt_size * opt_delta)
+            hedge_shares = int(proposed_sell * opt_size * opt_delta)
 
             # Check stock limit before hedging
             projected_stock = stock_position + hedge_shares
@@ -99,12 +100,10 @@ def trade(session, assets2, helper, vol):
 
             # Execute if still positive
             if proposed_sell > 0:
-                print(f"Placing SELL order for {proposed_sell} contracts of {assets2['ticker'].iloc[i+1]} with hedge {hedge_shares} shares")
                 place_order(session, assets2['ticker'].iloc[i+1], "MARKET", int(proposed_sell), "SELL")
 
-            if hedge_shares > 0:
-                print("THIS IS HEDGE SHARES:", hedge_shares)
-                if 'P' in assets2['ticker'].iloc[i]:
+            if abs(hedge_shares) > 0:
+                if hedge_shares < 0:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "SELL")
                 else:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "BUY")
@@ -118,22 +117,26 @@ def trade(session, assets2, helper, vol):
 
     # Step 2: Trading logic for BUY
     if decision == "BUY":
+
+        #num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
+                              #assets2['ticker'].iloc[max_id+1], 
+                              #detlas[max_id], profitability[max_id], 
+                              #OPT_NET_LIMIT - opt_gross)
+        #print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
+        num_contracts = (profitability[max_id] * 20) // delta_val
+        print("This is profitability:", profitability[max_id], "This is delta_val:", delta_val)
+        print("NUM_CONTRACTS BEFORE CHANGES:", num_contracts)
         
-        num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
-                              assets2['ticker'].iloc[max_id+1], 
-                              detlas[max_id], profitability[max_id], 
-                              opt_gross)
-        #num_contracts = (profitability[max_id] * 100) // abs(delta_val)
-        print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
 
         #Enforce option gross limit
         if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:
             num_contracts = (OPT_GROSS_LIMIT - opt_gross) * np.sign(num_contracts)
 
         # Enforce option net limits
-        if abs(num_contracts + opt_net) > OPT_NET_LIMIT:
+        
             if np.sign(num_contracts) == -1:
-                num_contracts = -OPT_NET_LIMIT - opt_net
+                if abs(num_contracts + opt_net) > OPT_NET_LIMIT:
+                    num_contracts = OPT_NET_LIMIT + opt_net
             else:
                 num_contracts = OPT_NET_LIMIT - opt_net
 
@@ -141,16 +144,11 @@ def trade(session, assets2, helper, vol):
         trade_size = num_contracts * 100 * abs(delta_val)
 
         #Enforce Delta Exposure Limit
-
         recalculated_exposure = trade_size + current_exposure
         if abs(recalculated_exposure) > DELTA_LIMIT:
             # shrink contracts to stay inside delta bounds
-            if np.sign( num_contracts) == -1:
-                allowed_delta = DELTA_LIMIT + recalculated_exposure
-                num_contracts = int(-1 * allowed_delta / (100 * abs(delta_val)))
-            else:
-                allowed_delta = DELTA_LIMIT - recalculated_exposure
-                num_contracts = int(allowed_delta / (100 * delta_val))
+            allowed_delta = DELTA_LIMIT - abs(current_exposure)
+            num_contracts = int(allowed_delta / (100 * delta_val))
 
         #Recompute trade_size after delta adjustments
         trade_size = num_contracts * 100 * abs(delta_val)
@@ -169,6 +167,8 @@ def trade(session, assets2, helper, vol):
         trade_size = num_contracts * 100 * delta_val
         need_hedge = -1 * trade_size
         recalculated_exposure = need_hedge + current_exposure
+
+        print(f"TRADE SIZE: {trade_size}, NEED HEDGE: {need_hedge}, RECALCULATED EXPOSURE: {recalculated_exposure}, NUM CONTRACTS: {num_contracts}")
         
         # If after all adjustments, trade_size is zero, skip
         if trade_size == 0:
@@ -176,11 +176,9 @@ def trade(session, assets2, helper, vol):
         else:
             #Placing BUY order for {num_contracts} contracts of {assets2['ticker'].iloc[max_id]} with hedge {need_hedge} shares, 
             # with the current exposure added (from helper['share_exposure'])
-            if num_contracts > 0:
-                print("THIS IS NUM CONTRACTS", num_contracts)
+            if abs(num_contracts) > 0:
                 place_order(session, assets2['ticker'].iloc[max_id+1], "MARKET", int(abs(num_contracts)), "BUY")
-            if recalculated_exposure  != 0:
-                print("THIS IS RECALCULATED EXPOSURE:", recalculated_exposure)
+            if recalculated_exposure != 0:
                 if recalculated_exposure  > 0:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", int(recalculated_exposure), "BUY")
                 else:

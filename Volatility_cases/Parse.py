@@ -58,8 +58,11 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     #Mean for this CDF is 0, stdev is 0.03 (3%) as a guess
     
     kelly = ((winProb * rateOfReturn) - (1-winProb)) / (rateOfReturn)
-    print("THIS IS KELLY:", kelly)
     
     safeKelly = kelly * safetyMargin
+    
+    print("input variables:", type, optionIV, etfIV, volDiff)
+    print("calculations:", sgn, profitMargin, rateOfReturn, winProb)
+    print("output items:", kelly, safeKelly, sharesLeft, sgn)
     
     return safeKelly * sharesLeft * sgn

@@ -22,10 +22,10 @@ def parse_news(news):
 #parse.parse_news(news)
 
 def normPDF(number):
-    return np.exp(0.5*(number**2.0))/np.sqrt(2.0*np.pi)
+    return np.exp(0.5*((number)**2.0))/(np.sqrt(2.0*np.pi))
 
-def normCDF(number):
-    return (1.0+ math.erf(number/np.sqrt(2.0)))/2.0
+def normCDF(number, stdev):
+    return (1.0+ math.erf((number)/stdev*np.sqrt(2.0)))/2.0
 
 def kelly(etfPrice, etfIV, optionPrice, name, 
           delta, diffcom, sharesLeft, optionIV = None):
@@ -47,10 +47,11 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     profitMargin = (-volDiff) * vega #if volDiff is negative, we long, positive we short
     rateOfReturn = abs(profitMargin) / optionPrice 
     
-    if profitMargin < 0:
+    if volDiff > 0: #vol is too high => priced too high, short it
         sgn = -1
     
-    winProb = normCDF(abs(volDiff)/0.02) #probability of winning if we take the correct side
+    winProb = normCDF(abs(volDiff), 0.03) #probability of winning if we take the correct side
+    #Mean for this CDF is 0, stdev is 0.03 (3%) as a guess
     
     kelly = ((winProb * rateOfReturn) - (1-winProb)) / (rateOfReturn)
     

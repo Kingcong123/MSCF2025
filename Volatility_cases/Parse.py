@@ -29,6 +29,10 @@ def normCDF(number):
 
 def kelly(etfPrice, etfIV, optionPrice, name, 
           delta, diffcom, sharesLeft, optionIV = None):
+    #debugging
+    print("THIS IS KELLY PARAMETER", etfPrice, etfIV, optionPrice, name, 
+          delta, diffcom, sharesLeft, optionIV)
+    
     #we don't actually get the IV of the option. Imma black scholes it here
     expiry = (20/240) 
     safetyMargin = 0.9
@@ -49,6 +53,7 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     winProb = normCDF(abs(volDiff)/0.02) #probability of winning if we take the correct side
     
     kelly = ((winProb * rateOfReturn) - (1-winProb)) / (rateOfReturn)
+    print("THIS IS KELLY:", kelly)
     
     safeKelly = kelly * safetyMargin
     

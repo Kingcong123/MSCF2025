@@ -78,7 +78,7 @@ def calculate_improved_win_probability(volDiff, etfIV, news_volatilities=None):
     winProb = normCDF(capped_diff, adjusted_stdev)
     
     # Ensure reasonable bounds (between 0.5 and 0.95)
-    winProb = max(0.5, min(0.95, winProb))
+    winProb = max(0.1, min(0.95, winProb))
     
     return winProb
 

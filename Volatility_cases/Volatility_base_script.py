@@ -81,7 +81,7 @@ def get_news(session):
     
     
 def main():
-    vol = 0.29  #Initial volatility estimate
+    vol = 0.18 #Initial volatility estimate
 
     with requests.Session() as session:
         session.headers.update(API_KEY)

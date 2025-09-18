@@ -14,6 +14,7 @@ from py_vollib.black_scholes import black_scholes as bs
 from py_vollib.black_scholes.greeks.analytical import delta
 import py_vollib.black.implied_volatility as iv
 import Trading as tr
+import Strategy_2 as tr2
 import Parse
 """
 To install py_vollib, use conda install jholdom::py_vollib, since it requires Python versions between 3.6 and 3.8.
@@ -81,7 +82,7 @@ def get_news(session):
     
     
 def main():
-    vol = 0.18 #Initial volatility estimate
+    vol = 0.27 #Initial volatility estimate
 
     with requests.Session() as session:
         session.headers.update(API_KEY)
@@ -187,7 +188,8 @@ def main():
                 helper['required_pos'] = 'NO POSITION'
             helper['SAME?'] = (helper['required_pos'] == helper['current_pos'])
 
-            tr.trade(session, assets2, helper, vol, news_volatilities)
+            #tr.trade(session, assets2, helper, vol, news_volatilities)
+            tr2.trade(session, assets2, helper, vol, news_volatilities)
 
             print(assets2.to_markdown(), end='\n'*2)
             print(helper.to_markdown(), end='\n'*2)

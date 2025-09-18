@@ -76,7 +76,7 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
 
     #Position details
     profitability = np.abs(np.array(assets2['diffcom'].iloc[1:]))
-    detlas = np.array(assets2['delta'].iloc[1:])
+    deltas = np.array(assets2['delta'].iloc[1:])
     decisions = np.array(assets2['decision'].iloc[1:])
     positions = np.array(assets2['position'])
     sizes = np.array(assets2['size'])
@@ -98,7 +98,7 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
         if decisions[i] == "SELL" and abs(positions[i+1]) > 0:
             opt_pos = option_positions[i]
             opt_size = sizes[i]
-            opt_delta = detlas[i]
+            opt_delta = deltas[i]
             proposed_sell = abs(opt_pos)
             #print("Preparing to SELL", proposed_sell, "contracts of", assets2['ticker'].iloc[i+1], "opt_pos:", opt_pos, "opt_size:", opt_size, "opt_delta:", opt_delta)
 
@@ -140,83 +140,69 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "BUY")
                 else:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "SELL")
-   
-    
-    #Get current trade details
-    max_id = np.argmax(profitability) #Index of most profitable option
-    delta_val = detlas[max_id]        #Delta of this option
-    decision = decisions[max_id]      #Decision of this option
+        if decisions[i] == "BUY":
 
-    # Step 2: Trading logic for BUY
-    if decision == "BUY":
-
-        num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
-                              assets2['ticker'].iloc[max_id+1], 
-                              detlas[max_id], profitability[max_id], 
+            num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[i+1], 
+                              assets2['ticker'].iloc[i+1], 
+                              deltas[i], profitability[i], 
                               OPT_NET_LIMIT - opt_gross, news_volatilities=news_volatilities)
-        #print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
-        #num_contracts = (profitability[max_id] * 20) // delta_val
+            #print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
+            #num_contracts = (profitability[i] * 20) // delta_val
     
-        #Enforce option gross limit
-        if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:
-            num_contracts = (OPT_GROSS_LIMIT - opt_gross) * np.sign(num_contracts)
-            #print("NUM_CONTRACTS AFTER GROSS LIMIT:", num_contracts)
+            #Enforce option gross limit
+            if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:
+                num_contracts = (OPT_GROSS_LIMIT - opt_gross) * np.sign(num_contracts)
+                #print("NUM_CONTRACTS AFTER GROSS LIMIT:", num_contracts)
 
-        # Enforce option net limits
+            # Enforce option net limits
         
-            if np.sign(num_contracts) == -1:
-                if abs(num_contracts + opt_net) > OPT_NET_LIMIT:
-                    num_contracts = OPT_NET_LIMIT + opt_net
-                    #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
-            else:
-                num_contracts = OPT_NET_LIMIT - opt_net
-                #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
-
-        #Recompute trade_size after option adjustments
-        trade_size = num_contracts * 100 * abs(delta_val)
-
-        if abs(trade_size) > DELTA_LIMIT:
-            # shrink contracts to stay inside delta bounds
-            allowed_delta = DELTA_LIMIT - abs(trade_size)
-            num_contracts = int(allowed_delta / (100 * delta_val))
-            #print("NUM_CONTRACTS AFTER DELTA LIMIT:", num_contracts)
-
-        #Recompute trade_size after delta adjustments
-        trade_size = num_contracts * 100 * delta_val
-        need_hedge = -1 * trade_size
-
-        #Enforce Stock Limit (hedge capacity)
-        if np.sign(need_hedge) == -1:
-            allowed_stock = STOCK_LIMIT + need_hedge
-        else:
-            allowed_stock = STOCK_LIMIT - need_hedge
-        if abs(need_hedge) > abs(allowed_stock):
-            num_contracts = int(np.sign(num_contracts) * abs(allowed_stock) / (100 * abs(delta_val)))
-            #print("NUM_CONTRACTS AFTER STOCK LIMIT:", num_contracts)
-        
-        #Final trade size, and how much stock we need to hedge
-        trade_size = num_contracts * 100 * delta_val
-        need_hedge = -1 * trade_size
-        
-        # If after all adjustments, trade_size is zero, skip
-        if trade_size == 0:
-            pass
-        else:
-            #Placing BUY order for {num_contracts} contracts of {assets2['ticker'].iloc[max_id]} with hedge {need_hedge} shares, 
-            # with the current exposure added (from helper['share_exposure'])
-            if abs(num_contracts) > 0:
-                place_order(session, assets2['ticker'].iloc[max_id+1], "MARKET", int(abs(num_contracts)), "BUY")
-            if need_hedge != 0:
-                #print("NEED HEDGE:", need_hedge)
-                if need_hedge  > 0:
-                    #print("BUYING HEDGE SHARES:")
-                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(need_hedge), "BUY")
+                if np.sign(num_contracts) == -1:
+                    if abs(num_contracts + opt_net) > OPT_NET_LIMIT:
+                        num_contracts = OPT_NET_LIMIT + opt_net
+                        #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
                 else:
-                    #print("SELLING HEDGE SHARES:")
-                    place_order(session, assets2['ticker'].iloc[0], "MARKET", int(abs(need_hedge)), "SELL")
+                    num_contracts = OPT_NET_LIMIT - opt_net
+                    #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
+
+            #Recompute trade_size after option adjustments
+            trade_size = num_contracts * 100 * abs(deltas[i])
+
+            if abs(trade_size) > DELTA_LIMIT:
+                # shrink contracts to stay inside delta bounds
+                allowed_delta = DELTA_LIMIT - abs(trade_size)
+                num_contracts = int(allowed_delta / (100 * deltas[i]))
+                #print("NUM_CONTRACTS AFTER DELTA LIMIT:", num_contracts)
+
+            #Recompute trade_size after delta adjustments
+            trade_size = num_contracts * 100 * deltas[i]
+            need_hedge = -1 * trade_size
+
+            #Enforce Stock Limit (hedge capacity)
+            if np.sign(need_hedge) == -1:
+                allowed_stock = STOCK_LIMIT + need_hedge
+            else:
+                allowed_stock = STOCK_LIMIT - need_hedge
+            if abs(need_hedge) > abs(allowed_stock):
+                num_contracts = int(np.sign(num_contracts) * abs(allowed_stock) / (100 * abs(deltas[i])))
+                #print("NUM_CONTRACTS AFTER STOCK LIMIT:", num_contracts)
         
-
-    
-
-
-
+            #Final trade size, and how much stock we need to hedge
+            trade_size = num_contracts * 100 * deltas[i]
+            need_hedge = -1 * trade_size
+        
+            # If after all adjustments, trade_size is zero, skip
+            if trade_size == 0:
+                pass
+            else:
+                #Placing BUY order for {num_contracts} contracts of {assets2['ticker'].iloc[i]} with hedge {need_hedge} shares, 
+                # with the current exposure added (from helper['share_exposure'])
+                if abs(num_contracts) > 0:
+                    place_order(session, assets2['ticker'].iloc[i+1], "MARKET", int(abs(num_contracts)), "BUY")
+                if need_hedge != 0:
+                    #print("NEED HEDGE:", need_hedge)
+                    if need_hedge > 0:
+                        #print("BUYING HEDGE SHARES:")
+                        place_order(session, assets2['ticker'].iloc[0], "MARKET", int(need_hedge), "BUY")
+                    else:
+                        #print("SELLING HEDGE SHARES:")
+                        place_order(session, assets2['ticker'].iloc[0], "MARKET", int(abs(need_hedge)), "SELL")

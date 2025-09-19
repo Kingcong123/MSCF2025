@@ -81,11 +81,12 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
     positions = np.array(assets2['position'])
     sizes = np.array(assets2['size'])
         
-
+    
     option_positions = positions[1:]
     for i in range(len(option_positions)):
         if 'P' in assets2['ticker'].iloc[i+1]:
             option_positions[i] *= -1  # Invert position for puts'
+    print(option_positions)
 
     #Limit calculations
     stock_position = positions[0] * sizes[0]

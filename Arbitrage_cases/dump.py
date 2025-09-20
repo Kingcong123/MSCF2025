@@ -131,18 +131,18 @@ def get_positions(session):
 def step_once():
     positions = get_positions(s)
 
-    for position in positions:
-        shares = positions[position]
+    for ticker in positions:
+        shares = positions[ticker]
         if shares > 0:
             if shares > MAX_SIZE_EQUITY:
-                place_mkt(position, "SELL", shares - MAX_SIZE_EQUITY)
+                place_mkt(ticker, "SELL", shares - MAX_SIZE_EQUITY)
             else:
-                place_mkt(position, "SELL", shares)
-        elif positions[position] < 0:
+                place_mkt(ticker, "SELL", shares)
+        elif shares < 0:
             if abs(shares) > MAX_SIZE_EQUITY:
-                place_mkt(position, "BUY", abs(shares) - MAX_SIZE_EQUITY)
+                place_mkt(ticker, "BUY", abs(shares) - MAX_SIZE_EQUITY)
             else:
-                place_mkt(position, "BUY", abs(shares))
+                place_mkt(ticker, "BUY", abs(shares))
 
 
 def main():

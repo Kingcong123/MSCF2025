@@ -21,17 +21,17 @@ RITC = "RITC"  # ETF quoted in USD
 # Trading parameters
 FEE_MKT = 0.02           # $/share (market orders)
 REBATE_LMT = 0.01        # $/share (passive orders)
-MAX_SIZE_EQUITY = 10000  # per order for BULL/BEAR/RITC
+MAX_SIZE_EQUITY = 100000  # per order for BULL/BEAR/RITC
 MAX_SIZE_FX = 2500000    # per order for CAD/USD
 
 # Risk management parameters
-MAX_LONG_NET = 25000
-MAX_SHORT_NET = -25000
+MAX_LONG_NET = 50000
+MAX_SHORT_NET = -50000
 MAX_GROSS = 500000
 ORDER_QTY = 5000         # child order size for arb legs
 
 # Arbitrage threshold - must cover fees and slippage
-ARB_THRESHOLD_CAD = 0.07  # Base threshold for fees and slippage
+ARB_THRESHOLD_CAD = 0.15  # Base threshold for fees and slippage
 
 # Position closing parameters
 MEAN_REVERSION_THRESHOLD = 0.1  # Close position when edge shrinks to this level

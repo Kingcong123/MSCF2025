@@ -83,7 +83,13 @@ def positions_map():
 
 def place_mkt(ticker, action, qty): # type LMT?
     # Sends Market orders; price param is ignored by most RIT cases when type=MARKET
-    return s.post(f"{API}/orders",
+    if qty > 10000:
+        while(qty > 10000):
+            s.post(f"{API}/orders",
+                  params={"ticker": ticker, "type": "MARKET",
+                          "quantity": 10000, "action": action}).ok
+            qty -= 10000
+    s.post(f"{API}/orders",
                   params={"ticker": ticker, "type": "MARKET",
                           "quantity": int(qty), "action": action}).ok
 
@@ -130,29 +136,27 @@ def get_positions(session):
 # --------- CORE LOGIC ----------
 def step_once():
     positions = get_positions(s)
+    print("Current Positions:", positions)
+    #place_mkt("BULL", "BUY", 30000)
+    place_mkt("BULL", "BUY", 50000)
 
-    for ticker in positions:
-        shares = positions[ticker]
-        if shares > 0:
-            if shares > MAX_SIZE_EQUITY:
-                place_mkt(ticker, "SELL", shares - MAX_SIZE_EQUITY)
-            else:
-                place_mkt(ticker, "SELL", shares)
-        elif shares < 0:
-            if abs(shares) > MAX_SIZE_EQUITY:
-                place_mkt(ticker, "BUY", abs(shares) - MAX_SIZE_EQUITY)
-            else:
-                place_mkt(ticker, "BUY", abs(shares))
+   # place_mkt("BEAR", "BUY", 30000)
+    place_mkt("BEAR", "BUY", 50000)
+
+    place_mkt("RITC", "SELL", 47000)
+    #place_mkt("RITC", "SELL", 18000)
+
 
 
 def main():
-    tick, status = get_tick_status()
-    while status == "ACTIVE":
+    tick = get_tick_status()
+    trade = True
+    while trade == True:
         step_once()
         # Optional: print a lightweight heartbeat every 1s
         #print(f"tick={tick} e1={e1:.4f} e2={e2:.4f} ritc_ask_cad={info['ritc_ask_cad']:.4f}")
         sleep(0.5)
-        tick, status = get_tick_status()
+        trade = False
 
 if __name__ == "__main__":
     main()

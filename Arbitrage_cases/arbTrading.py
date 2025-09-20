@@ -30,12 +30,11 @@ MAX_SHORT_NET = -25000
 MAX_GROSS = 500000
 ORDER_QTY = 5000         # child order size for arb legs
 
-# Arbitrage threshold - must cover fees, slippage, and converter costs
-CONVERTER_COST = 1500    # Cost per ETF creation/redemption
-ARB_THRESHOLD_CAD = 0.07 + (CONVERTER_COST / 10000)  # 0.07 + 0.15 = 0.22 CAD per share
+# Arbitrage threshold - must cover fees and slippage
+ARB_THRESHOLD_CAD = 0.07  # Base threshold for fees and slippage
 
-# ETF Creation/Redemption parameters
-ETF_CREATION_UNITS = 10000  # Standard creation/redemption unit size
+# Position closing parameters
+MEAN_REVERSION_THRESHOLD = 0.02  # Close position when edge shrinks to this level
 
 class ArbitrageTrader:
     def __init__(self, session):
@@ -101,57 +100,57 @@ class ArbitrageTrader:
                 
         return True
     
-    def etf_creation(self, quantity):
-        """Convert 10,000 BULL + 10,000 BEAR stocks to 10,000 RITC ETF units"""
-        if quantity % ETF_CREATION_UNITS != 0:
-            print(f"ETF creation quantity must be multiple of {ETF_CREATION_UNITS}")
+    def close_position_market(self, position, current_prices):
+        """Close arbitrage position by trading in the market when mean reversion occurs"""
+        if not position or not current_prices:
             return False
             
-        try:
-            # Use ETF creation converter
-            params = {
-                'from': 'BULL,BEAR',
-                'to': 'RITC',
-                'quantity': quantity
-            }
-            response = self.session.post('http://localhost:9999/v1/converters', params=params)
+        # Calculate current arbitrage edge
+        arb_data = self.detect_arbitrage_opportunity(current_prices)
+        if not arb_data:
+            return False
             
-            if response.ok:
-                print(f"ETF Creation: {quantity} BULL+BEAR -> {quantity} RITC")
-                return True
-            else:
-                print(f"ETF Creation failed: {response.text}")
-                return False
+        current_edge1 = arb_data["edge1"]
+        current_edge2 = arb_data["edge2"]
+        
+        # Determine if we should close the position based on mean reversion
+        should_close = False
+        
+        if position["type"] == "basket_rich":
+            # We're short BULL+BEAR, long RITC
+            # Close when the edge shrinks significantly (mean reversion)
+            if current_edge1 <= MEAN_REVERSION_THRESHOLD:
+                should_close = True
+                print(f"Mean reversion detected - closing basket_rich position. Edge: {current_edge1:.4f} CAD")
                 
-        except Exception as e:
-            print(f"ETF Creation error: {e}")
-            return False
-    
-    def etf_redemption(self, quantity):
-        """Convert 10,000 RITC ETF units to 10,000 BULL + 10,000 BEAR stocks"""
-        if quantity % ETF_CREATION_UNITS != 0:
-            print(f"ETF redemption quantity must be multiple of {ETF_CREATION_UNITS}")
-            return False
+        elif position["type"] == "etf_rich":
+            # We're long BULL+BEAR, short RITC  
+            # Close when the edge shrinks significantly (mean reversion)
+            if current_edge2 <= MEAN_REVERSION_THRESHOLD:
+                should_close = True
+                print(f"Mean reversion detected - closing etf_rich position. Edge: {current_edge2:.4f} CAD")
+        
+        if should_close:
+            # Execute opposite trades to close the position
+            close_qty = abs(position["bull_qty"])
             
-        try:
-            # Use ETF redemption converter
-            params = {
-                'from': 'RITC',
-                'to': 'BULL,BEAR',
-                'quantity': quantity
-            }
-            response = self.session.post('http://localhost:9999/v1/converters', params=params)
-            
-            if response.ok:
-                print(f"ETF Redemption: {quantity} RITC -> {quantity} BULL+BEAR")
-                return True
-            else:
-                print(f"ETF Redemption failed: {response.text}")
-                return False
+            if position["type"] == "basket_rich":
+                # Close: Buy back BULL+BEAR (cover shorts), sell RITC (close long)
+                self.place_order(BULL, "BUY", close_qty)
+                self.place_order(BEAR, "BUY", close_qty)
+                self.place_order(RITC, "SELL", close_qty)
+                print(f"Closed basket_rich position: Bought {close_qty} BULL+BEAR, Sold {close_qty} RITC")
                 
-        except Exception as e:
-            print(f"ETF Redemption error: {e}")
-            return False
+            elif position["type"] == "etf_rich":
+                # Close: Sell BULL+BEAR (close longs), buy RITC (cover short)
+                self.place_order(BULL, "SELL", close_qty)
+                self.place_order(BEAR, "SELL", close_qty)
+                self.place_order(RITC, "BUY", close_qty)
+                print(f"Closed etf_rich position: Sold {close_qty} BULL+BEAR, Bought {close_qty} RITC")
+                
+            return True
+            
+        return False
     
     def within_risk_limits(self, positions):
         """Check if positions are within risk limits"""
@@ -246,62 +245,42 @@ class ArbitrageTrader:
         return traded
     
     def close_arbitrage_positions(self, positions):
-        """Close arbitrage positions using ETF creation/redemption"""
+        """Close arbitrage positions using market trades when mean reversion occurs"""
         if not self.arb_positions or not positions:
             return
             
-        for pos in self.arb_positions[:]:  # Copy list to modify during iteration
-            bull_pos = positions.get(BULL, 0)
-            bear_pos = positions.get(BEAR, 0) 
-            ritc_pos = positions.get(RITC, 0)
+        # Get current prices for mean reversion analysis
+        current_prices = self.get_best_prices()
+        if not current_prices:
+            return
             
-            # Check if we have enough position to close
-            if pos["type"] == "basket_rich":
-                # We're short BULL+BEAR, long RITC
-                # Need to create ETF: convert BULL+BEAR to RITC to close shorts
-                if bull_pos <= pos["bull_qty"] and bear_pos <= pos["bear_qty"]:
-                    # Close short positions by buying back and creating ETF
-                    close_qty = abs(pos["bull_qty"])
-                    if close_qty >= ETF_CREATION_UNITS and close_qty % ETF_CREATION_UNITS == 0:
-                        # Buy back the short positions
-                        self.place_order(BULL, "BUY", close_qty)
-                        self.place_order(BEAR, "BUY", close_qty)
-                        
-                        # Create ETF to close the long RITC position
-                        if self.etf_creation(close_qty):
-                            self.arb_positions.remove(pos)
-                            print(f"Closed basket_rich position: {close_qty} units")
-                            
-            elif pos["type"] == "etf_rich":
-                # We're long BULL+BEAR, short RITC
-                # Need to redeem ETF: convert RITC to BULL+BEAR to close shorts
-                if ritc_pos <= pos["ritc_qty"]:
-                    # Close short RITC position by redeeming ETF
-                    close_qty = abs(pos["ritc_qty"])
-                    if close_qty >= ETF_CREATION_UNITS and close_qty % ETF_CREATION_UNITS == 0:
-                        if self.etf_redemption(close_qty):
-                            self.arb_positions.remove(pos)
-                            print(f"Closed etf_rich position: {close_qty} units")
+        for pos in self.arb_positions[:]:  # Copy list to modify during iteration
+            # Check if position should be closed based on mean reversion
+            if self.close_position_market(pos, current_prices):
+                # Position was successfully closed, remove it from tracking
+                self.arb_positions.remove(pos)
+                print(f"Removed closed position from tracking")
     
-    def trade(self, s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
+    def trade(self, session=None, assets2=None, helper=None, vol=None, news_volatilities=None):
         """
         Main trading function for ETF arbitrage
         """
         # Get current market data
+        prices = self.get_best_prices()
         positions = self.get_positions()
         
-        if not positions:
+        if not prices or not positions:
             return
             
         # Close any existing arbitrage positions first
         self.close_arbitrage_positions(positions)
         
         # Detect new arbitrage opportunities
-        arb_data = self.detect_arbitrage_opportunity(bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
+        arb_data = self.detect_arbitrage_opportunity(prices)
         
         if arb_data:
             # Execute new arbitrage trades if profitable
-            self.execute_arbitrage_trade(arb_data, positions)
+            self.execute_arbitrage_trade(arb_data, prices, positions)
             
             # Print current status
             print(f"Arbitrage Status:")
@@ -311,10 +290,10 @@ class ArbitrageTrader:
             print(f"  Current Positions - BULL: {positions[BULL]}, BEAR: {positions[BEAR]}, RITC: {positions[RITC]}")
 
 # Compatibility function for existing code structure
-def trade(s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
+def trade(session):
     """
     Compatibility wrapper for the main trading function
     """
-    trader = ArbitrageTrader(s)
-    trader.trade(s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
+    trader = ArbitrageTrader(session)
+    trader.trade(session)
 

@@ -139,10 +139,10 @@ def step_once():
             else:
                 place_mkt(position, "SELL", shares)
         elif positions[position] < 0:
-            if shares > MAX_SIZE_EQUITY:
-                place_mkt(position, "BUY", shares - MAX_SIZE_EQUITY)
+            if abs(shares) > MAX_SIZE_EQUITY:
+                place_mkt(position, "BUY", abs(shares) - MAX_SIZE_EQUITY)
             else:
-                place_mkt(position, "BUY", shares)
+                place_mkt(position, "BUY", abs(shares))
             
     
     """accept_active_tender_offers() # Automatically checking and acceptting all of the tender offer

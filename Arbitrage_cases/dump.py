@@ -137,15 +137,14 @@ def get_positions(session):
 def step_once():
     positions = get_positions(s)
     print("Current Positions:", positions)
-    #place_mkt("BULL", "BUY", 30000)
-    place_mkt("BULL", "BUY", 50000)
-
-   # place_mkt("BEAR", "BUY", 30000)
-    place_mkt("BEAR", "BUY", 50000)
-
-    place_mkt("RITC", "SELL", 47000)
-    #place_mkt("RITC", "SELL", 18000)
-
+    for ticker in positions:
+        shares = positions[ticker]
+        if shares > 0:
+            # Sell all long positions
+            place_mkt(ticker, "SELL", shares)
+        elif shares < 0:
+            # Cover all short positions by buying back
+            place_mkt(ticker, "BUY", abs(shares))
 
 
 def main():

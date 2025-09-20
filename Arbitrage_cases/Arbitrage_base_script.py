@@ -80,7 +80,7 @@ def positions_map():
         out.setdefault(k, 0)
     return out
 
-def place_mkt(ticker, action, qty): # type: LMT?
+def place_mkt(ticker, action, qty): # type LMT?
     # Sends Market orders; price param is ignored by most RIT cases when type=MARKET
     return s.post(f"{API}/orders",
                   params={"ticker": ticker, "type": "MARKET",

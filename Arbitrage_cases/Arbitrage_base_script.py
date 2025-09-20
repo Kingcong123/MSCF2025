@@ -132,7 +132,7 @@ def step_once():
     # Direction 2: ETF rich vs Basket
     # SELL RITC (hit bid in USD), BUY basket (lift asks) -> compare in CAD
     edge2 = ritc_bid_cad - basket_buy_cost
-    
+
     accept_active_tender_offers() # Automatically checking and acceptting all of the tender offer
 
     traded = False
@@ -166,7 +166,7 @@ def main():
     while status == "ACTIVE":
         traded, e1, e2, info = step_once()
         # Optional: print a lightweight heartbeat every 1s
-        print(f"tick={tick} e1={e1:.4f} e2={e2:.4f} ritc_ask_cad={info['ritc_ask_cad']:.4f}")
+        #print(f"tick={tick} e1={e1:.4f} e2={e2:.4f} ritc_ask_cad={info['ritc_ask_cad']:.4f}")
         sleep(0.5)
         tick, status = get_tick_status()
 

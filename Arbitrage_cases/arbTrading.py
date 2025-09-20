@@ -34,7 +34,7 @@ ORDER_QTY = 5000         # child order size for arb legs
 ARB_THRESHOLD_CAD = 0.07  # Base threshold for fees and slippage
 
 # Position closing parameters
-MEAN_REVERSION_THRESHOLD = 0.02  # Close position when edge shrinks to this level
+MEAN_REVERSION_THRESHOLD = 0.1  # Close position when edge shrinks to this level
 
 class ArbitrageTrader:
     def __init__(self, session):
@@ -261,26 +261,25 @@ class ArbitrageTrader:
                 self.arb_positions.remove(pos)
                 print(f"Removed closed position from tracking")
     
-    def trade(self, session=None, assets2=None, helper=None, vol=None, news_volatilities=None):
+    def trade(self, session, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
         """
         Main trading function for ETF arbitrage
         """
         # Get current market data
-        prices = self.get_best_prices()
         positions = self.get_positions()
         
-        if not prices or not positions:
+        if not positions:
             return
             
         # Close any existing arbitrage positions first
         self.close_arbitrage_positions(positions)
         
         # Detect new arbitrage opportunities
-        arb_data = self.detect_arbitrage_opportunity(prices)
+        arb_data = self.detect_arbitrage_opportunity(bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
         
         if arb_data:
             # Execute new arbitrage trades if profitable
-            self.execute_arbitrage_trade(arb_data, prices, positions)
+            self.execute_arbitrage_trade(arb_data, positions)
             
             # Print current status
             print(f"Arbitrage Status:")
@@ -288,12 +287,13 @@ class ArbitrageTrader:
             print(f"  ETF Rich Edge: {arb_data['edge2']:.4f} CAD")
             print(f"  Open Positions: {len(self.arb_positions)}")
             print(f"  Current Positions - BULL: {positions[BULL]}, BEAR: {positions[BEAR]}, RITC: {positions[RITC]}")
+        
 
 # Compatibility function for existing code structure
-def trade(session):
+def trader(session, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
     """
     Compatibility wrapper for the main trading function
     """
     trader = ArbitrageTrader(session)
-    trader.trade(session)
+    trader.trade(session, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
 

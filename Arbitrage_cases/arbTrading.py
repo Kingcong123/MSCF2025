@@ -261,7 +261,7 @@ class ArbitrageTrader:
                 self.arb_positions.remove(pos)
                 print(f"Removed closed position from tracking")
     
-    def trade(self, session=None, assets2=None, helper=None, vol=None, news_volatilities=None):
+    def trade(self, session, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
         """
         Main trading function for ETF arbitrage
         """
@@ -290,7 +290,7 @@ class ArbitrageTrader:
             print(f"  Current Positions - BULL: {positions[BULL]}, BEAR: {positions[BEAR]}, RITC: {positions[RITC]}")
 
 # Compatibility function for existing code structure
-def trade(session):
+def trader(session, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
     """
     Compatibility wrapper for the main trading function
     """

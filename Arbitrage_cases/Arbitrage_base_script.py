@@ -134,7 +134,7 @@ def step_once():
     # SELL RITC (hit bid in USD), BUY basket (lift asks) -> compare in CAD
     edge2 = ritc_bid_cad - basket_buy_cost
 
-    arb.trade(s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
+    arb.trader(s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
 
     """accept_active_tender_offers() # Automatically checking and acceptting all of the tender offer
 
@@ -167,7 +167,7 @@ def step_once():
 def main():
     tick, status = get_tick_status()
     while status == "ACTIVE":
-        traded, e1, e2, info = step_once()
+        step_once()
         # Optional: print a lightweight heartbeat every 1s
         #print(f"tick={tick} e1={e1:.4f} e2={e2:.4f} ritc_ask_cad={info['ritc_ask_cad']:.4f}")
         sleep(0.5)

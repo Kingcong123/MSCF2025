@@ -90,7 +90,7 @@ def kelly(etfPrice, etfIV, optionPrice, name,
     
     #we don't actually get the IV of the option. Imma black scholes it here
     expiry = (20/240) 
-    safetyMargin = 0.5
+    safetyMargin = 0.9
     strike = float(name[3:5])
     type = 'c' if 'C' in name else 'p'
     sgn = 1

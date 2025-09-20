@@ -60,7 +60,8 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
     current_exposure = helper['must_be_traded'].iloc[0]
     if np.isnan(current_exposure):
         current_exposure = 0
-    #print("CURRENT EXPOSURE:", current_exposure)
+    
+    print("CURRENT EXPOSURE:", current_exposure)
     if current_exposure > 0:
         print("BUYING EXPOSURE SHARES:")
         place_order(session, assets2['ticker'].iloc[0], "MARKET", 1.05 * int(current_exposure), "BUY")
@@ -71,7 +72,7 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
      # --- Risk Limits ---
     DELTA_LIMIT = 7000
     STOCK_LIMIT = 50000
-    OPT_GROSS_LIMIT = 2500
+    OPT_GROSS_LIMIT = 1000
     OPT_NET_LIMIT = 1000
 
     #Position details

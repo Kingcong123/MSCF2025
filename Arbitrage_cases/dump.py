@@ -24,7 +24,7 @@ and maximize returns.
 '''
 
 API = "http://localhost:9999/v1"
-API_KEY = "Rotman"                     # <-- your key
+API_KEY = "WILL"                     # <-- your key
 HDRS = {"X-API-key": API_KEY}          # change to X-API-Key if your server needs it
 
 # Tickers
@@ -143,40 +143,12 @@ def step_once():
                 place_mkt(position, "BUY", abs(shares) - MAX_SIZE_EQUITY)
             else:
                 place_mkt(position, "BUY", abs(shares))
-            
-    
-    """accept_active_tender_offers() # Automatically checking and acceptting all of the tender offer
 
-    traded = False
-    
-    if edge1 >= ARB_THRESHOLD_CAD and within_limits():
-        # Basket rich: sell BULL & BEAR, buy RITC
-        q = min(ORDER_QTY, MAX_SIZE_EQUITY)
-        place_mkt(BULL, "SELL", q)
-        place_mkt(BEAR, "SELL", q)
-        place_mkt(RITC, "BUY",  q)
-        traded = True
-
-    elif edge2 >= ARB_THRESHOLD_CAD and within_limits():
-        # ETF rich: buy BULL & BEAR, sell RITC
-        q = min(ORDER_QTY, MAX_SIZE_EQUITY)
-        place_mkt(BULL, "BUY",  q)
-        place_mkt(BEAR, "BUY",  q)
-        place_mkt(RITC, "SELL", q)
-        traded = True
-
-    return traded, edge1, edge2, {
-        "bull_bid": bull_bid, "bull_ask": bull_ask,
-        "bear_bid": bear_bid, "bear_ask": bear_ask,
-        "ritc_bid_usd": ritc_bid_usd, "ritc_ask_usd": ritc_ask_usd,
-        "usd_bid": usd_bid, "usd_ask": usd_ask,
-        "ritc_bid_cad": ritc_bid_cad, "ritc_ask_cad": ritc_ask_cad
-    }"""
 
 def main():
     tick, status = get_tick_status()
     while status == "ACTIVE":
-        traded, e1, e2, info = step_once()
+        step_once()
         # Optional: print a lightweight heartbeat every 1s
         #print(f"tick={tick} e1={e1:.4f} e2={e2:.4f} ritc_ask_cad={info['ritc_ask_cad']:.4f}")
         sleep(0.5)

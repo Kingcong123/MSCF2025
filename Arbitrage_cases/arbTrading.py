@@ -43,26 +43,6 @@ class ArbitrageTrader:
         self.arb_positions = []  # Track open arbitrage positions
         self.last_prices = {}    # Cache for price data
         
-    def get_best_prices(self):
-        """Get best bid/ask prices for all relevant securities"""
-        prices = {}
-        
-        for ticker in [BULL, BEAR, RITC, USD]:
-            try:
-                r = self.session.get(f"http://localhost:9999/v1/securities/book", 
-                                   params={"ticker": ticker})
-                r.raise_for_status()
-                book = r.json()
-                
-                bid = float(book["bids"][0]["price"]) if book["bids"] else 0.0
-                ask = float(book["asks"][0]["price"]) if book["asks"] else 1e12
-                prices[ticker] = {"bid": bid, "ask": ask}
-                
-            except Exception as e:
-                print(f"Error getting prices for {ticker}: {e}")
-                return None
-                
-        return prices
     
     def get_positions(self):
         """Get current positions for all securities"""
@@ -96,7 +76,7 @@ class ArbitrageTrader:
         
         while qty > max_size:
             params = {
-                'ticker': ticker,
+                'ticker': ticker,   
                 'type': order_type,
                 'quantity': max_size,
                 'action': action
@@ -183,18 +163,16 @@ class ArbitrageTrader:
         
         return (gross < MAX_GROSS) and (MAX_SHORT_NET < net < MAX_LONG_NET)
     
-    def detect_arbitrage_opportunity(self, prices):
+    def detect_arbitrage_opportunity(self, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
         """Detect arbitrage opportunities between ETF and underlying basket"""
-        if not prices:
-            return None
             
         # Convert RITC prices to CAD
-        ritc_bid_cad = prices[RITC]["bid"] * prices[USD]["bid"]
-        ritc_ask_cad = prices[RITC]["ask"] * prices[USD]["ask"]
+        ritc_bid_cad = ritc_bid_cad * usd_bid
+        ritc_ask_cad = ritc_ask_cad * usd_ask
         
         # Basket prices
-        basket_bid = prices[BULL]["bid"] + prices[BEAR]["bid"]  # Sell basket
-        basket_ask = prices[BULL]["ask"] + prices[BEAR]["ask"]  # Buy basket
+        basket_bid = bull_bid + bear_bid  # Sell basket
+        basket_ask = bull_ask + bear_ask  # Buy basket
         
         # Calculate arbitrage edges
         # Direction 1: Basket rich vs ETF (sell basket, buy ETF)
@@ -206,7 +184,7 @@ class ArbitrageTrader:
         return {"edge1": edge1, "edge2": edge2, "ritc_bid_cad": ritc_bid_cad, 
                 "ritc_ask_cad": ritc_ask_cad, "basket_bid": basket_bid, "basket_ask": basket_ask}
     
-    def execute_arbitrage_trade(self, arb_data, prices, positions):
+    def execute_arbitrage_trade(self, arb_data, positions):
         """Execute arbitrage trade and close position using converters"""
         if not arb_data or not self.within_risk_limits(positions):
             return False
@@ -305,26 +283,25 @@ class ArbitrageTrader:
                             self.arb_positions.remove(pos)
                             print(f"Closed etf_rich position: {close_qty} units")
     
-    def trade(self, session=None, assets2=None, helper=None, vol=None, news_volatilities=None):
+    def trade(self, s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
         """
         Main trading function for ETF arbitrage
         """
         # Get current market data
-        prices = self.get_best_prices()
         positions = self.get_positions()
         
-        if not prices or not positions:
+        if not positions:
             return
             
         # Close any existing arbitrage positions first
         self.close_arbitrage_positions(positions)
         
         # Detect new arbitrage opportunities
-        arb_data = self.detect_arbitrage_opportunity(prices)
+        arb_data = self.detect_arbitrage_opportunity(bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
         
         if arb_data:
             # Execute new arbitrage trades if profitable
-            self.execute_arbitrage_trade(arb_data, prices, positions)
+            self.execute_arbitrage_trade(arb_data, positions)
             
             # Print current status
             print(f"Arbitrage Status:")
@@ -334,10 +311,10 @@ class ArbitrageTrader:
             print(f"  Current Positions - BULL: {positions[BULL]}, BEAR: {positions[BEAR]}, RITC: {positions[RITC]}")
 
 # Compatibility function for existing code structure
-def trade(session, assets2=None, helper=None, vol=None, news_volatilities=None):
+def trade(s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask):
     """
     Compatibility wrapper for the main trading function
     """
-    trader = ArbitrageTrader(session)
-    trader.trade(session, assets2, helper, vol, news_volatilities)
+    trader = ArbitrageTrader(s)
+    trader.trade(s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
 

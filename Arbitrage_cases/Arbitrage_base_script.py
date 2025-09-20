@@ -7,6 +7,7 @@ All rights reserved.
 import requests
 from time import sleep
 import numpy as np
+import arbTrading as arb
 
 '''
 If you are not familiar with Python or feeling a little bit rusty, highly recommend you to go through the following link:
@@ -133,7 +134,9 @@ def step_once():
     # SELL RITC (hit bid in USD), BUY basket (lift asks) -> compare in CAD
     edge2 = ritc_bid_cad - basket_buy_cost
 
-    accept_active_tender_offers() # Automatically checking and acceptting all of the tender offer
+    arb.trade(s, bull_bid, bull_ask, bear_bid, bear_ask, ritc_bid_cad, ritc_ask_cad, usd_bid, usd_ask)
+
+    """accept_active_tender_offers() # Automatically checking and acceptting all of the tender offer
 
     traded = False
     
@@ -159,7 +162,7 @@ def step_once():
         "ritc_bid_usd": ritc_bid_usd, "ritc_ask_usd": ritc_ask_usd,
         "usd_bid": usd_bid, "usd_ask": usd_ask,
         "ritc_bid_cad": ritc_bid_cad, "ritc_ask_cad": ritc_ask_cad
-    }
+    }"""
 
 def main():
     tick, status = get_tick_status()

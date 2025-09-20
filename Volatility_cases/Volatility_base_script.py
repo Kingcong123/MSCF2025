@@ -82,7 +82,7 @@ def get_news(session):
     
     
 def main():
-    vol = 0.35#Initial volatility estimate
+    vol = 0.21 #initial volatility estimate
 
     with requests.Session() as session:
         session.headers.update(API_KEY)
@@ -188,8 +188,8 @@ def main():
                 helper['required_pos'] = 'NO POSITION'
             helper['SAME?'] = (helper['required_pos'] == helper['current_pos'])
 
-            #tr.trade(session, assets2, helper, vol, news_volatilities)
-            tr2.trade(session, assets2, helper, vol, news_volatilities)
+            tr.trade(session, assets2, helper, vol, news_volatilities)
+            #tr2.trade(session, assets2, helper, vol, news_volatilities)
 
             print(assets2.to_markdown(), end='\n'*2)
             print(helper.to_markdown(), end='\n'*2)

@@ -8,6 +8,7 @@ import numpy as np
 import Parse
 
 def place_order(session, ticker, type, quantity, action):
+    #print("PLACING ORDER:", ticker, type, quantity, action)
     if ticker == "RTM" and quantity > 10000:
         while(quantity > 10000):
             params = {
@@ -18,6 +19,7 @@ def place_order(session, ticker, type, quantity, action):
             }
             # Make the POST request with proper URL and 
             response = session.post('http://localhost:9999/v1/orders', params=params)
+            print(response, "9999 stocks")
             quantity = quantity - 9000
 
     if ticker != "RTM" and quantity > 100:
@@ -31,6 +33,7 @@ def place_order(session, ticker, type, quantity, action):
          }
             # Make the POST request with proper URL and 
             response = session.post('http://localhost:9999/v1/orders', params=params)
+            print(response, "99 opt")
             quantity = quantity - amount
 
     params = {
@@ -40,7 +43,7 @@ def place_order(session, ticker, type, quantity, action):
         'action': action
         }
     response = session.post('http://localhost:9999/v1/orders', params=params)
-    #print(response)
+    print(response)
     return response
 
     
@@ -62,16 +65,16 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
         current_exposure = 0
     #print("CURRENT EXPOSURE:", current_exposure)
     if current_exposure > 0:
-        print("BUYING EXPOSURE SHARES:")
+        #print("BUYING EXPOSURE SHARES:")
         place_order(session, assets2['ticker'].iloc[0], "MARKET", 1.05 * int(current_exposure), "BUY")
     if current_exposure < 0:
-        print("SELLING EXPOSURE SHARES:")
+        #print("SELLING EXPOSURE SHARES:")
         place_order(session, assets2['ticker'].iloc[0], "MARKET", 1.05 * abs(int(current_exposure)), "SELL")
 
      # --- Risk Limits ---
     DELTA_LIMIT = 7000
     STOCK_LIMIT = 50000
-    OPT_GROSS_LIMIT = 2500
+    OPT_GROSS_LIMIT = 1000
     OPT_NET_LIMIT = 1000
 
     #Position details
@@ -135,7 +138,7 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
                 place_order(session, assets2['ticker'].iloc[i+1], "MARKET", int(proposed_sell), "SELL")
 
             if abs(hedge_shares) > 0:
-                print(f"Placing hedge order for {hedge_shares} shares of {assets2['ticker'].iloc[0]}")
+                #print(f"Placing hedge order for {hedge_shares} shares of {assets2['ticker'].iloc[0]}")
                 if hedge_shares < 0:
                     place_order(session, assets2['ticker'].iloc[0], "MARKET", abs(hedge_shares), "BUY")
                 else:
@@ -153,22 +156,35 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
         num_contracts = Parse.kelly(assets2['last'].iloc[0], vol, assets2['last'].iloc[max_id+1], 
                               assets2['ticker'].iloc[max_id+1], 
                               detlas[max_id], profitability[max_id], 
-                              OPT_NET_LIMIT - opt_gross, news_volatilities=news_volatilities)
+                              OPT_GROSS_LIMIT - opt_gross, news_volatilities=news_volatilities)
         #print("THIS IS NUM KELLY CONTRACTS:", num_contracts)
         #num_contracts = (profitability[max_id] * 20) // delta_val
+        if 'P' in assets2['ticker'].iloc[max_id+1]:
+            num_contracts = num_contracts * -1
     
         #Enforce option gross limit
+        #print("OPT_GROSS", opt_gross, "OPT_NET", opt_net)
+        #print("NUM CONTRACTS BEFORE LIMITS:", num_contracts, "OF", assets2['ticker'].iloc[max_id+1])
+
         if abs(num_contracts) + opt_gross > OPT_GROSS_LIMIT:
             num_contracts = (OPT_GROSS_LIMIT - opt_gross) * np.sign(num_contracts)
             #print("NUM_CONTRACTS AFTER GROSS LIMIT:", num_contracts)
-
-        # Enforce option net limits
         
-            if np.sign(num_contracts) == -1:
-                if abs(num_contracts + opt_net) > OPT_NET_LIMIT:
-                    num_contracts = OPT_NET_LIMIT + opt_net
+        # Enforce option net limits
+        if abs(num_contracts + opt_net) > OPT_NET_LIMIT:
+            if np.sign(num_contracts) == -1 and np.sign(opt_net) == -1:
+                    num_contracts = -OPT_NET_LIMIT - opt_net
                     #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
-            else:
+
+            if  np.sign(num_contracts) == -1 and np.sign(opt_net) == 1:
+                    num_contracts = -OPT_NET_LIMIT - opt_net 
+                    #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
+
+            if np.sign(num_contracts) == 1 and np.sign(opt_net) == 1:
+                    num_contracts = OPT_NET_LIMIT - opt_net
+                    #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
+
+            if np.sign(num_contracts) == 1 and np.sign(opt_net) == -1:
                 num_contracts = OPT_NET_LIMIT - opt_net
                 #print("NUM_CONTRACTS AFTER NET LIMIT:", num_contracts)
 
@@ -202,7 +218,7 @@ def trade(session, assets2, helper, vol, news_volatilities=None):
         if trade_size == 0:
             pass
         else:
-            #Placing BUY order for {num_contracts} contracts of {assets2['ticker'].iloc[max_id]} with hedge {need_hedge} shares, 
+            #print("Placing BUY order for {num_contracts} contracts of {assets2['ticker'].iloc[max_id]} with hedge {need_hedge} shares")
             # with the current exposure added (from helper['share_exposure'])
             if abs(num_contracts) > 0:
                 place_order(session, assets2['ticker'].iloc[max_id+1], "MARKET", int(abs(num_contracts)), "BUY")
